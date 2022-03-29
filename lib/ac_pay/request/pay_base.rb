@@ -14,12 +14,13 @@ module AcPay
                     :layout,
                     :prime,
                     :cvv_prime,
-                    :card_secret_name,
+                    :card_secret_token,
                     :card_secret_key,
                     :remember,
                     :phone,
                     :name,
-                    :email
+                    :email,
+                    :remember
 
       private
 
@@ -35,6 +36,7 @@ module AcPay
         raise Error, 'order_id is required' if order_id.nil?
         raise Error, 'product is required' if product.nil?
         raise Error, 'total cant eq zero' if total.nil? || total.zero?
+        raise Error, 'phone, name, email is required' if remember && (phone.nil? || name.nil? || email.nil?)
       end
 
       def data
@@ -44,6 +46,12 @@ module AcPay
           body: product,
           total_fee: total.to_i,
         }
+        if remember
+          result[:remember] = 'Y'
+          result[:card_holder_phone_number] = phone
+          result[:card_holder_name] = name
+          result[:card_holder_email] = email
+        end
         result = result.merge(direct_pay_data) if prime
         result = result.merge(redirect_pay_data) unless prime
         result
@@ -57,15 +65,14 @@ module AcPay
         {
           notify_url: result_url,
           callback_url: confirm_url,
+          result[:layout] = '2' if mobile?,
         }
       end
 
       def direct_pay_data
-        result = {
+        {
           prime: prime,
         }
-        result[:layout] = '2' if mobile?
-        result
       end
 
       def mobile?
